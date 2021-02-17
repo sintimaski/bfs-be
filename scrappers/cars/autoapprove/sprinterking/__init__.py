@@ -1,0 +1,1 @@
+from .sprinterking import SprinterKingScrapper

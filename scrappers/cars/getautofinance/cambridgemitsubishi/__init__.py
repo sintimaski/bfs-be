@@ -1,0 +1,1 @@
+from .cambridge_mitsubishi import CambridgeMitsubishiScrapper

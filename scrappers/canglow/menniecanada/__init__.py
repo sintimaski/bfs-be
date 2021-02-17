@@ -1,0 +1,1 @@
+from .menniecanada import MennieCanadaScrapper

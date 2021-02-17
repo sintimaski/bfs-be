@@ -1,0 +1,43 @@
+from sqlalchemy.dialects.postgresql import JSON, ARRAY
+
+from core.db_connector import db
+from .base_model import BaseModel
+
+
+class CarProduct(db.Model, BaseModel):
+    source = db.Column(db.Text())
+    source_id = db.Column(db.Text())
+    project = db.Column(db.Text())
+    car_id = db.Column(db.Text())
+    product_name = db.Column(db.Text())
+    price = db.Column(db.Integer())
+    condition = db.Column(db.Text(), default="used")
+    status = db.Column(db.Text(), default="active")
+    images = db.Column(ARRAY(db.Text()))
+    make = db.Column(db.Text())
+    model = db.Column(db.Text())
+    trim = db.Column(db.Text())
+    year = db.Column(db.Integer())
+    body_style = db.Column(db.Text())
+    body_type = db.Column(db.Text())
+    odometer = db.Column(db.Integer())
+    transmission = db.Column(db.Text())
+    engine = db.Column(db.Text())
+    engine_size = db.Column(db.Text())
+    engine_cylinders = db.Column(db.Integer())
+    driveline = db.Column(db.Text())
+    exterior_color = db.Column(db.Text())
+    interior_color = db.Column(db.Text())
+    doors = db.Column(db.Integer())
+    passengers = db.Column(db.Integer())
+    fuel = db.Column(db.Text())
+    city_fuel = db.Column(db.Text())
+    hwy_fuel = db.Column(db.Text())
+    stock_number = db.Column(db.Text())
+    vin = db.Column(db.Text())
+    details = db.Column(db.Text())
+    options = db.Column(JSON)
+    content = db.Column(db.Text())
+    web_url = db.Column(db.Text())
+    location_diller = db.Column(db.Text())
+    airbags = db.Column(db.Integer())

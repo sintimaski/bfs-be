@@ -1,0 +1,1 @@
+from .boltonika import BoltonikaScrapper

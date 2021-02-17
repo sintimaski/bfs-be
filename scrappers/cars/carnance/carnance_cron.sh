@@ -1,0 +1,1 @@
+echo '/root/BFS/vvbfs/bin/python /root/BFS/scrappers/cars/carnance/carnance_cron.py' | /bin/bash
