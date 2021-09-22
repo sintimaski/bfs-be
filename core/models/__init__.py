@@ -9,6 +9,7 @@ from .user import User
 from .weed_mapping import WeedMapping
 from .weedmaps_product import WeedmapsProduct
 from .weedmaps_shop import WeedmapsShop
+from .preset import Preset
 
 
 class DbAbsLayer(object):

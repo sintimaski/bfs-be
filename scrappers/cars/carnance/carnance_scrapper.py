@@ -58,9 +58,9 @@ class CarnanceScrapper:
 
         self.rest_send = rest_send
         self.token = "MOevCNXZ6y121SlPjwAf"
-        self.post_car_url = "http://carnance.com/wp-json/jwa-cars-listing/v1/cars/{}"
-        self.vin_car_url = "http://carnance.com/wp-json/jwa-cars-listing/v1/cars-by-vin/{}"
-        self.statuses_url = "http://carnance.com/wp-json/jwa-cars-listing/v1/cars-status-import/"
+        self.post_car_url = "https://carnance.com/wp-json/jwa-cars-listing/v1/cars/{}"
+        self.vin_car_url = "https://carnance.com/wp-json/jwa-cars-listing/v1/cars-by-vin/{}"
+        self.statuses_url = "https://carnance.com/wp-json/jwa-cars-listing/v1/cars-status-import/"
 
         self.send_report = send_report
         self.total_active = 0
@@ -70,10 +70,6 @@ class CarnanceScrapper:
     def start_routine(self):
         if self.scrape:
             self.start_scrapping()
-        # if self.file_export:
-        #     self.export_cars_to_csv()
-        # if self.file_send:
-        #     self.send_file()
         if self.rest_send:
             self.send_rest()
         if self.send_report:
@@ -111,151 +107,18 @@ class CarnanceScrapper:
 
             print(f"Done {scrapper_class.__name__}")
 
-    def send_file(self):
-        file = open(self.filepath, "rb")
-        session = ftplib.FTP("192.99.21.156", "carnance", "Q9y7Z0k3")
-        session.cwd("/www/carnance.com/import/")
-        session.storbinary(f"STOR {self.filename}", file)
-        file.close()
-        session.quit()
-
-    def export_cars_to_csv(self):
-        cars = CarProduct.query.filter(
-            and_(
-                CarProduct.source.in_(self.dealerships),
-                CarProduct.status.in_(["new", "sold"]),
-            )
-        ).all()
-        formatted = []
-
-        for car in cars:
-            # TODO Remove this shit ???
-            today = datetime.today()
-            today_year = today.year
-
-            if not car.year or int(car.year) < (today_year - 6):
-                continue
-
-            if not car.make:
-                continue
-
-            if car.source in ["ontariohyundaicars", "rexdalehyundai"] and (
-                int(car.year) - today_year
-            ) not in [0, 1]:
-                continue
-
-            if car.source == "rexdalehyundai" and car.condition != "new":
-                continue
-
-            for image in car.images:
-                if image.startswith("https://www.kbb.com"):
-                    continue
-
-            fuel = car.fuel or "Gas"
-            fuel = fuel.lower()
-            if "hybrid" in fuel:
-                schema_engine_type = "Hybrid"
-            elif "electric" in fuel:
-                schema_engine_type = "Electrical"
-            else:
-                schema_engine_type = "Internal Combustion"
-
-            if fuel not in ["diesel", "electric"]:
-                fuel = "Gas"
-            else:
-                fuel = car.fuel
-
-            if car.body_type == "Sport Utility Vehicle":
-                body_type = "SUV"
-            else:
-                body_type = car.body_type
-
-            if car.transmission == "CVT":
-                transmission = "Automatic"
-            else:
-                transmission = car.transmission
-
-            driveline_mapper = {
-                "Four-Wheel Drive": "AWD",
-                "Front-Wheel Drive": "FWD",
-                "All-Wheel Drive": "AWD",
-                "Rear-Wheel Drive": "RWD",
-                "Quattro": "AWD",
-            }
-            driveline = driveline_mapper.get(car.driveline, car.driveline)
-
-            formatted.append(
-                {
-                    "id": car.id,
-                    "source_id": car.source_id,
-                    "location_diller": car.location_diller,
-                    "vin": car.vin,
-                    "city_fuel": car.city_fuel,
-                    "hwy_fuel": car.hwy_fuel,
-                    "make": car.make,
-                    "model": car.model,
-                    "trim": f"{car.trim or ''} {car.engine or ''} {car.driveline or ''}".strip(),
-                    "year": car.year,
-                    "body_type": body_type,
-                    "odometer": car.odometer,
-                    "fuel": fuel,
-                    "condition": car.condition,
-                    "driveline": driveline,
-                    "exterior_color": car.exterior_color,
-                    "interior_color": car.interior_color,
-                    "engine": car.engine,
-                    "engine_size": car.engine_size,
-                    "engine_cylinders": car.engine_cylinders,
-                    "passengers": car.passengers,
-                    "price": car.price,
-                    "images": ",".join(
-                        img for img in car.images if "/thumb-" not in img
-                    ),
-                    "transmission": transmission,
-                    "airbags": car.airbags,
-                    "options": "|".join(car.options or []),
-                    "seating_capacities": car.passengers,
-                    "status": car.status,
-                    "schema_mark": car.make,
-                    "schema_models": car.model,
-                    "schema_vin": car.vin,
-                    "schema_year": car.year,
-                    "schema_color_body": car.exterior_color,
-                    "schema_body_type": car.body_type,
-                    "schema_number_doors": car.doors,
-                    "schema_transmission": car.transmission,
-                    "schema_engine_type": schema_engine_type,
-                    "schema_price": car.price,
-                }
-            )
-        print(f"IN FILE TOTAL: {len(formatted)}")
-
-        with open(self.filepath, "w+") as file:
-            fieldnames = list(formatted[0].keys())
-            writer = csv.DictWriter(
-                file, fieldnames=fieldnames, quoting=csv.QUOTE_ALL
-            )
-            writer.writeheader()
-            writer.writerows(formatted)
-
     def send_rest(self):
         formatted = self.get_formatted_cars()
         scrapper = create_scraper()
 
-        status_mapper = {
-            "sold": "private",
-            "new": "draft",
-            "active": "publish",
-        }
         passed = 0
-
         for car_data in formatted:
-            car_data["carStatus"] = status_mapper[car_data["carStatus"]]
+            car_data.pop("id", None)
+            car_data.pop("car_id", None)
+            car_data.update({"carStatus": 'draft'})
 
-            if not car_data["gallery"]:
-                car_data["carStatus"] = "draft"
-
-            # car_data.pop("gallery", None)
+            if not car_data['vin'] or not car_data['price']:
+                continue
 
             car_data.update({"token": self.token})
 
@@ -268,7 +131,13 @@ class CarnanceScrapper:
             if data["statusCode"] == 200:
                 car_id = data["ID"]
                 car_data.update({"ID": car_id})
+                car_data.update({"carStatus": data["carStatus"]})
                 car_data.pop("gallery", None)
+                if car_data["carStatus"] != "publish":
+                    car_data.pop("gallery", None)
+                elif not car_data.get('gallery'):
+                    car_data.update({"carStatus": 'draft'})
+
 
             headers = {"Content-type": "application/json"}
             resp = scrapper.post(
@@ -283,12 +152,6 @@ class CarnanceScrapper:
             if resp.status_code != 200:
                 print(resp_json)
                 continue
-
-            # car_id = resp_json["car_id"]
-            # car = CarProduct.query.filter(CarProduct.vin == vin).first()
-            # car.car_id = car_id
-
-        # db.session.commit()
 
     def get_formatted_cars(self) -> List[Dict]:
         cars = CarProduct.query.filter(

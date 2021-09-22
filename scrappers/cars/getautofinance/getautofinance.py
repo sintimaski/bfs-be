@@ -174,6 +174,9 @@ class GetAutoFinance:
 
             car_data.update({"token": self.token})
 
+            if not car_data['vin'] or not car_data['price']:
+                continue
+
             vin = car_data["vin"]
             resp = scrapper.get(
                 "https://getautofinance.ca/wp-json/jwa-cars-listing/v1/cars-by-vin/{}".format(
@@ -284,7 +287,6 @@ class GetAutoFinance:
             }
 
             self.get_int(car_data, "seatingNum", "passengers", car)
-            # self.get_int(car_data, "carMileage", "odometer", car)
             self.get_int(car_data, "airbagNum", "airbags", car)
             self.get_int(car_data, "doorsNum", "doors", car)
 

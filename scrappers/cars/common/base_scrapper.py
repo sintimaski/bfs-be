@@ -32,6 +32,9 @@ class BaseCarScrapper:
         apis_keys: Dict = None,
         send_report=None,
     ):
+        self.MAX_RETRIES_ON_CAR = 3
+        self.failed_counter = {}
+
         self.source = source
         self.project = project
         self.source_id = source_id
@@ -142,6 +145,9 @@ class BaseCarScrapper:
                     print(f"{succeed}/{passed}/{total}")
                 else:
                     failed_url = car_data.get("failed", "")
+                    self.failed_counter.update({
+                        failed_url: self.failed_counter.get(failed_url, 0) + 1
+                    })
                     failed.append(failed_url)
                     print(f"{succeed}/{passed}/{total}")
                 db.session.commit()
@@ -150,6 +156,9 @@ class BaseCarScrapper:
             self.get_cars_data()
 
     def get_car_data(self, car_url: str, force_apis=False):
+        if self.failed_counter.get(car_url, 0) >= self.MAX_RETRIES_ON_CAR:
+            return {"out": car_url}
+
         dealership_data = self.get_dealership_data(car_url)
         if "failed" in dealership_data:
             print("dealership failed")

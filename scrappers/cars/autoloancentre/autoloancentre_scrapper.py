@@ -30,9 +30,9 @@ class AutoLoanCentreScrapper:
         self.project = "autoloancentre"
 
         self.scrappers = [
+            LeonsFineCarsScrapper,
             AutoQuestGroupScrapper,
             SprinterKingScrapper,
-            LeonsFineCarsScrapper,
         ]
         self.dealerships = []
         for scrapper_class in self.scrappers:
@@ -152,8 +152,10 @@ class AutoLoanCentreScrapper:
         }
         for car_data in formatted:
             car_data["carStatus"] = status_mapper[car_data["carStatus"]]
-
             car_data.update({"token": self.token})
+
+            if not car_data['vin'] or not car_data['price']:
+                continue
 
             vin = car_data["vin"]
             resp = scrapper.get(
@@ -171,6 +173,7 @@ class AutoLoanCentreScrapper:
                 car_data.pop('gallery', None)
 
             headers = {"Content-type": "application/json"}
+            print(self.post_car_url.format(car_id))
             resp = scrapper.post(
                 self.post_car_url.format(car_id), json=car_data, headers=headers
             )

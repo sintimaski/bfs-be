@@ -1,4 +1,5 @@
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
+from sqlalchemy.event import listens_for
 
 from core.db_connector import db
 from .base_model import BaseModel
@@ -19,6 +20,7 @@ class R2GBusiness(db.Model, BaseModel):
     soc_fb = db.Column(db.Text())
     soc_tw = db.Column(db.Text())
     soc_in = db.Column(db.Text())
+    soc_ig = db.Column(db.Text())
     website = db.Column(db.Text())
     email = db.Column(db.Text())
     phone = db.Column(db.Text())
@@ -34,3 +36,11 @@ class R2GBusiness(db.Model, BaseModel):
 
     about = db.Column(db.Text())
     gallery = db.Column(ARRAY(db.Text()))
+    logo = db.Column(db.Text())
+
+    status = db.Column(db.Text())
+    target_link = db.Column(db.Text())
+    target_id = db.Column(db.Text())
+
+    last_update = db.Column(JSON(), default={})
+    needs_check = db.Column(db.Boolean(), default=False)

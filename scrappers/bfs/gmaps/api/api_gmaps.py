@@ -8,7 +8,7 @@ import random
 import requests
 
 from core.db_connector import db
-from core.models import GmapsBusiness
+from core.models import Business
 from core.proxies import proxies
 from .helpers import sget, create_url
 
@@ -25,6 +25,7 @@ from .helpers import sget, create_url
 # 100[1] - highlights, accecability, etc.
 # 157 - logo? image
 # 178[3] - phone
+# 183[1][3] - city
 # 183[1][4] - ZIP
 # 183[1][5] - state
 # 203[1][4][0] - status
@@ -33,6 +34,9 @@ from .helpers import sget, create_url
 
 class GmapsApiScrapper:
     def __init__(self, query, region):
+        self.source = "gmaps"
+        self.project = "encycloweedia"
+
         self.query = query
         self.cities_coords = self.get_cities_coords(region)
         self.failed = []
@@ -57,9 +61,7 @@ class GmapsApiScrapper:
         )
 
     def start_scrapping(self):
-        # self.get_data_part(self.cities_coords[0], 0)
         self.get_data()
-        # self.write_resp_to_file(json.dumps(self.failed), "failed.json")
 
     def get_data(self):
         offset_step = 20
@@ -72,25 +74,22 @@ class GmapsApiScrapper:
                 if not data_part:
                     break
                 for business_data in data_part:
-                    gmaps_id = business_data["gmaps_id"]
+                    source_name__id = business_data["source_name__id"]
                     exists = (
-                        GmapsBusiness.query.filter(
-                            GmapsBusiness.gmaps_id == gmaps_id
+                        Business.query.filter(
+                            Business.source_name__id == source_name__id
                         ).scalar()
                         is not None
                     )
-                    from pprint import pprint
-
-                    pprint(business_data)
-                    # if exists:
-                    #     business = GmapsBusiness.query.filter(
-                    #         GmapsBusiness.gmaps_id == gmaps_id
-                    #     ).first()
-                    #     for key, value in business_data.items():
-                    #         setattr(business, key, value)
-                    # else:
-                    #     business = GmapsBusiness(**business_data)
-                    #     db.session.add(business)
+                    if exists:
+                        business = Business.query.filter(
+                            Business.gmaps_id == source_name__id
+                        ).first()
+                        for key, value in business_data.items():
+                            setattr(business, key, value)
+                    else:
+                        business = Business(**business_data)
+                        db.session.add(business)
                 db.session.commit()
         self.retry_failed()
 
@@ -113,7 +112,7 @@ class GmapsApiScrapper:
             url = self.api_url.format(lng, lat, offset, f"{query}+{city}")
             resp = requests.get(
                 url,
-                # proxies=proxy
+                proxies=proxy
             )
             resp_text_json = resp.text[4:]
             resp_json = json.loads(resp_text_json)
@@ -124,9 +123,8 @@ class GmapsApiScrapper:
                 gmaps_id = entity_data[10]
 
                 _coordinates = sget(entity_data, 9, [])
-                _lat = sget(_coordinates, 2, "")
-                _lng = sget(_coordinates, 3, "")
-                coordinates = f"{_lat},{_lng}"
+                lat = sget(_coordinates, 2, "")
+                lng = sget(_coordinates, 3, "")
 
                 _website = sget(entity_data, 7, [])
                 website = sget(_website, 1, "")
@@ -147,6 +145,10 @@ class GmapsApiScrapper:
                 _state = sget(_state, 1, [])
                 state = sget(_state, 5, "")
 
+                _city = sget(entity_data, 183, [])
+                _city = sget(_city, 1, [])
+                city = sget(_city, 3, "")
+
                 _status = sget(entity_data, 203, [])
                 _status = sget(_status, 1, [])
                 _status = sget(_status, 4, [])
@@ -156,13 +158,6 @@ class GmapsApiScrapper:
                 _b_hours = sget(entity_data, 34, [])
                 _b_hours = sget(_b_hours, 1, [])
 
-                _image = sget(entity_data, 72, [])
-                _image = sget(_image, 0, [])
-                _image = sget(_image, 1, [])
-                _image = sget(_image, 6, [])
-                image = sget(_image, 0, "")
-                image = create_url(image)
-
                 for _day in _b_hours:
                     day = sget(_day, 0, "")
                     _hours = sget(_day, 1, [])
@@ -170,21 +165,22 @@ class GmapsApiScrapper:
                     b_hours.update({day: hours})
 
                 item_collected = {
-                    "gmaps_id": gmaps_id,
+                    "source": self.source,
+                    "source_name__id": f"gmaps_{gmaps_id}",
+                    "project": self.project,
                     "name": sget(entity_data, 11, ""),
-                    "categories": sget(entity_data, 13, []),
+                    "category": sget(sget(entity_data, 13, []), 0, ""),
                     "status": status,
                     "hours": b_hours,
-                    "address_1": sget(entity_data, 18, ""),
-                    # 'address_2': sget(entity_data, 18, ""),
+                    "address": sget(entity_data, 18, ""),
+                    "city": city,
                     "country": country,
                     "state": state,
                     "zip": zip_code,
                     "phone": phone,
                     "website": website,
-                    "image": image,
-                    "search_query": query,
-                    "coordinates": coordinates,
+                    "lat": lat,
+                    "lng": lng,
                 }
                 data.append(item_collected)
         except Exception as e:
@@ -217,10 +213,3 @@ class GmapsApiScrapper:
                         }
                     )
         return result
-
-    @staticmethod
-    def write_resp_to_file(resp_text_json: str, filename: str = "entities.csv"):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        filepath = os.path.join(dir_path, "files", filename)
-        with open(filepath, "w+") as file:
-            file.write(resp_text_json)

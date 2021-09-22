@@ -158,6 +158,9 @@ class AutoApproveScrapper:
 
             car_data.update({"token": self.token})
 
+            if not car_data['vin'] or not car_data['price']:
+                continue
+
             vin = car_data["vin"]
             resp = scrapper.get(
                 "https://autoapprove.ca/wp-json/jwa-cars-listing/v1/cars-by-vin/{}".format(
@@ -171,7 +174,7 @@ class AutoApproveScrapper:
             if "statusCode" in data and data["statusCode"] == 200:
                 car_id = data["ID"]
                 car_data.update({"ID": car_id})
-                car_data.pop("gallery", None)
+                car_data.pop('gallery', None)
 
             headers = {"Content-type": "application/json"}
             resp = scrapper.post(

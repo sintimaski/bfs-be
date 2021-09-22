@@ -128,3 +128,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+flask_session/
+uploads/
+nohup.out*
+proxies.py
